@@ -13,7 +13,7 @@ This is a long lived Kubernetes service account token that the init.sh script wi
 ### Kubernetes Service Account yaml
 Create a service account token using the following steps.
 1. Create a service-account.yaml file and fill with the following content.
-
+```
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -43,7 +43,6 @@ roleRef:
     kind: Role
     name: stellar-ca-secret-creator-reader
     apiGroup: rbac.authorization.k8s.io
-
-2. Create the service account, role and biding using the following command. Remember to change the NAMESPACE value to the namespace you want to use.
-kubectl apply -f service-account.yaml -n NAMESPACE
+```
+2. Create the service account, role and biding using the following command. Remember to change the NAMESPACE value to the namespace you want to use. kubectl apply -f service-account.yaml -n NAMESPACE
 3. Retrive the service account token: kubectl get secret -n NAMESPACE stellar-ca-service-account-token -ojsonpath='{.data.token}' | base64 -d
