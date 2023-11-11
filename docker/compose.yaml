@@ -1,0 +1,25 @@
+name: stellar
+
+services:
+  ca:
+    build:
+      context: ../
+      dockerfile: ./docker/Dockerfile
+      args:
+        ENVIRONMENT: "development"
+    ports:
+      - "9801:9801"
+    volumes:
+      - ca-data:/var/ca
+      - web-data:/var/www/html
+      - ../config.yaml:/app/config.yaml
+    env_file: ../.k8s/devcontainer.env
+  web:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - web-data:/usr/share/nginx/html:ro
+volumes:
+  ca-data: {}
+  web-data: {}

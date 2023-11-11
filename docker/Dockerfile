@@ -19,7 +19,7 @@ RUN rm -f kubectl
 ########################################################
 # Development Build
 ########################################################
-FROM stellarca_base as build_production
+FROM stellarca_base as build_development
 #COPY IN THE SECRETS TO ALLOW KUBERNETES API ACCESS IN DEV
 
 #Copy the kubernetes Servie Account Token and settings into container
@@ -34,7 +34,7 @@ ONBUILD RUN update-ca-certificates
 ########################################################
 # Production build
 ########################################################
-FROM stellarca_base as build_development
+FROM stellarca_base as build_production
 #NOTHING TO DO HERE REALY
 
 ########################################################
@@ -49,9 +49,11 @@ WORKDIR /app
 COPY init.sh ./
 COPY openssl.conf ./
 
+RUN mkdir /app/tmp
 RUN chmod 744 /app/init.sh
 
 VOLUME ["/var/ca", "/var/www/html", "/app/config.yaml"]
+EXPOSE 9801/tcp
 
 ENTRYPOINT [ "/app/init.sh" ]
 CMD ["stellarca"]
