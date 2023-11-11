@@ -331,12 +331,11 @@ if [ "$1" = 'stellarca' ]; then
     echo -e "\e[32m----------------------------------------------------------------------------\e[0m"
 
     exec openssl ocsp -index $db_path/index \
-        -url $openssl_ocspBaseURL \
+        -port 9801 \
         -rsigner $public_path/$openssl_certBaseFileName-ocsp.crt \
         -rkey $private_path/$openssl_certBaseFileName-ocsp.key \
         -passin file:$ocsp_password_file \
-        -CA $public_path/$openssl_certBaseFileName.crt \
-        "$@"
+        -CA $public_path/$openssl_certBaseFileName.crt
 fi
 
 #Another command is being exec in the container
