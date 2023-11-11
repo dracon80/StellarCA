@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=config-schema.json
+
+configVersion: 1
+openssl:
+  name: Celestial Sovereign CA
+  certBaseFileName: celestialsovereign
+  ocspBaseURL: http://ocsp.home.arpa:9801/
+  aiaBaseURL: http://pki.home.arpa/
+  crlBaseURL: http://pki.home.arpa/
+  country: AU
+  organizationName: Home Network
+  organizationUnit: Chaos Management
+  state: QLD
+  location: CityName
+  lifeTimeDays: 3652
+  defaultDays: 731
