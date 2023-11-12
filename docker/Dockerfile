@@ -44,17 +44,26 @@ FROM stellarca_base as build_production
 FROM build_${ENVIRONMENT}
 LABEL maintainer="dracon80 https://github.com/dracon80"
 LABEL github="https://github.com/dracon80/StellarCA"
-
-WORKDIR /app
-
-COPY stellarca/init.sh ./
-COPY stellarca/openssl.conf ./
-
-RUN mkdir /app/tmp
-RUN chmod 744 /app/init.sh
-
 VOLUME ["/var/ca", "/var/www/html", "/app/config.yaml"]
 EXPOSE 9801/tcp
 
+#Create user for Container
+RUN adduser -u 101 stellar stellar -D
+
+#Create stellar system folders
+WORKDIR /app
+RUN mkdir -p /var/ca /var/www/html /etc/ca /app/tmp
+
+#Copy in init script and config
+COPY stellarca/init.sh ./
+COPY stellarca/openssl.conf ./
+
+#Assign permissions
+RUN chown stellar:stellar -R /app /var/www/html /var/ca /etc/ca /app/
+RUN chmod 774 /var/www/html
+RUN chmod 770 /app /var/ca /etc/ca
+RUN chmod +x /app/init.sh
+
+USER stellar
 ENTRYPOINT [ "/app/init.sh" ]
 CMD ["stellarca"]

@@ -24,7 +24,8 @@ build:
 
 build_dev:
 	$(MAKE) _builder \
-		-e _DOCKER_BUILD_ARGS="development"
+		-e _DOCKER_BUILD_ARGS="development"\
+		-e _BUILD_ARGS_TAG="development"
 
 push:
 	$(MAKE) _pusher
@@ -40,7 +41,7 @@ build_%:
 
 build_dev_%:
 	$(MAKE) _builder \
-		-e _BUILD_ARGS_TAG="$*-${GIT_HASH}" \
+		-e _BUILD_ARGS_TAG="development" \
 		-e _BUILD_ARGS_DOCKERFILE="Dockerfile.$*" \
 		-e _DOCKER_BUILD_ARGS="development"
 
