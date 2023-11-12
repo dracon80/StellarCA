@@ -15,6 +15,12 @@ RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/s
 RUN install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 RUN rm -f kubectl
 
+#Create user for Container
+RUN adduser -u 101 stellar stellar -D
+
+#Create stellar system folders
+WORKDIR /app
+RUN mkdir -p /var/ca /var/www/html /etc/ca /app/tmp
 
 ########################################################
 # Development Build
@@ -35,7 +41,8 @@ ONBUILD RUN update-ca-certificates
 # Production build
 ########################################################
 FROM stellarca_base as build_production
-#NOTHING TO DO HERE REALY
+#Copy in the project files
+ONBUILD COPY stellarca/* ./
 
 ########################################################
 # Final build stage
@@ -44,26 +51,15 @@ FROM stellarca_base as build_production
 FROM build_${ENVIRONMENT}
 LABEL maintainer="dracon80 https://github.com/dracon80"
 LABEL github="https://github.com/dracon80/StellarCA"
-VOLUME ["/var/ca", "/var/www/html", "/app/config.yaml"]
+
+VOLUME ["/var/ca", "/var/www/html"]
 EXPOSE 9801/tcp
 
-#Create user for Container
-RUN adduser -u 101 stellar stellar -D
-
-#Create stellar system folders
-WORKDIR /app
-RUN mkdir -p /var/ca /var/www/html /etc/ca /app/tmp
-
-#Copy in init script and config
-COPY stellarca/init.sh ./
-COPY stellarca/openssl.conf ./
-
 #Assign permissions
-RUN chown stellar:stellar -R /app /var/www/html /var/ca /etc/ca /app/
+RUN chown stellar:stellar -R /app /var/www/html /var/ca /etc/ca /app
 RUN chmod 774 /var/www/html
 RUN chmod 770 /app /var/ca /etc/ca
-RUN chmod +x /app/init.sh
 
 USER stellar
-ENTRYPOINT [ "/app/init.sh" ]
-CMD ["stellarca"]
+ENTRYPOINT [ "/app/entrypoint.sh" ]
+CMD ["stellarca", "--init"]

@@ -1,0 +1,6 @@
+#Docker ignore file
+.k8s-example/
+/stellarca/tmp/*
+/stellarca/config-schema.json
+/stellarca/config.yaml
+Makefile
