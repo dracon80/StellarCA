@@ -43,6 +43,16 @@ roleRef:
     kind: Role
     name: stellar-ca-secret-creator-reader
     apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: stellar-ca-service-account-token
+  annotations:
+    kubernetes.io/service-account.name: stellar-ca-service-account
+type: kubernetes.io/service-account-token
+
 ```
 2. Create the service account, role and biding using the following command. Remember to change the NAMESPACE value to the namespace you want to use. kubectl apply -f service-account.yaml -n NAMESPACE
 3. Retrive the service account token: kubectl get secret -n NAMESPACE stellar-ca-service-account-token -ojsonpath='{.data.token}' | base64 -d
