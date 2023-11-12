@@ -50,7 +50,7 @@ kind: Secret
 metadata:
   name: stellar-ca-service-account-token
   annotations:
-    kubernetes.io/service-account.name: dev-service-account
+    kubernetes.io/service-account.name: stellar-ca-service-account
 type: kubernetes.io/service-account-token
 
 ```
