@@ -22,10 +22,10 @@ _releaser:
 _debuger:
 	docker run -it --rm \
 		--mount type=bind,source=${LOCAL_WORKSPACE_FOLDER}/stellarca/entrypoint.sh,target=/app/entrypoint.sh,readonly \
-		--mount type=bind,source=${LOCAL_WORKSPACE_FOLDER}/stellarca/stellar.sh,target=/app/stellar.sh,readonly \
-		--mount type=bind,source=${LOCAL_WORKSPACE_FOLDER}/stellarca/init.sh,target=/app/init.sh,readonly \
+		--mount type=bind,source=${LOCAL_WORKSPACE_FOLDER}/stellarca/stellar,target=/app/stellar,readonly \
 		--mount type=bind,source=${LOCAL_WORKSPACE_FOLDER}/stellarca/openssl.conf,target=/app/openssl.conf,readonly \
 		--mount type=bind,source=${LOCAL_WORKSPACE_FOLDER}/stellarca/config.yaml,target=/app/config.yaml,readonly \
+		--env-file ../.k8s/devcontainer.env \
 		${DOCKER_USERNAME}/${APPLICATION_NAME}:development \
 		sh
 
