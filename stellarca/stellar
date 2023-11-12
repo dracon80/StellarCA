@@ -8,12 +8,14 @@ display_help() {
     echo -e "This script helps manage openssl as a Certificate Server.\n"
 
     echo -e "\e[34mCommands:\e[0m"
-    echo -e "  init            Initialised the Certificate Authority container"
-    echo -e "  gencrl          Generate a new CRL file"
-    echo -e "  ocsp            Starts the openssl ocsp responder"
-    echo -e "\e[34mGlobal Options:\e[0m"
-    echo -e "  --help    | -h  To get detailed help on commands use $0 COMMAND --help"
-    echo -e "  --debug   | -v  This provides additional debug loggined to std out"
+    echo -e "  init               Initialised the Certificate Authority container"
+    echo -e "  gencrl             Generate a new CRL file"
+    echo -e "  ocsp               Starts the openssl ocsp responder"
+    echo -e "  subordinate        Creates a new Subordinate CA certifcate, and associated CRL and OCSP signing certificates"
+
+    echo -e "\e[34m\nGlobal Options:\e[0m"
+    echo -e "  --help    | -h     To get detailed help on commands use $0 COMMAND --help"
+    echo -e "  --debug   | -v     This provides additional debug loggined to std out"
 
     exit 0
 }
@@ -23,8 +25,8 @@ display_init_help(){
     echo -e "Initalizes the container by either using existing Kubernetes Secrets and Configmaps or by creating a new config based on config.yaml.\n"
 
     echo -e "\e[34mOptions:\e[0m"
-    echo -e "  --dry-run | -d  This will run the script and create all required file, and display the kubectl commands that would have been called"
-    echo -e "  --cleanup | -c  Can only be used in combination with --dry-run. Will delete all files created during the initialization process"
+    echo -e "  --dry-run | -d     This will run the script and create all required file, and display the kubectl commands that would have been called"
+    echo -e "  --cleanup | -c     Can only be used in combination with --dry-run. Will delete all files created during the initialization process"
 
     exit 0
 }
@@ -34,10 +36,27 @@ display_ocsp_help(){
     echo -e "Runs openssl ocsp server\n"
 
     echo -e "\e[34mOptions:\e[0m"
-    echo -e "  --dry-run | -d  This will print the openssl command that would be run using the supplied switches"
+    echo -e "  --dry-run | -d     This will print the openssl command that would be run using the supplied switches"
 
     exit 0
 }
+
+display_subordinate_help(){
+    echo -e "\n\e[34mUsage:\e[0m stellar subordinate [OPTIONS]\n"
+    echo -e "Create new CA, OCSP, and CRL certificates for a subordinate CA, saving to Kubernetes secret\n"
+
+    echo -e "\e[34mOptions:\e[0m"
+    echo -e "  --name    | -n     (Required) The common name for the new Subordinate CA"
+    echo -e "  --basename| -b     (Required) The base file name that the new certificates will use."
+    echo -e "  --dry-run | -d     This will run the script and create all required file, and display the kubectl commands that would have been called"
+
+    echo -e "\e[34mExamples:\e[0m"
+    echo -e "** To create certificates for a subordinate named Sub CA, and have the certificates name subca.crt, subca-crl.crt and subca-ocsp.crt"
+    echo -e "    stellar subordinate --name \"Sub CA\" --basename subca"
+
+    exit 0
+}
+
 
 display_header(){
     echo -e "\n\e[$1m----------------------------------------------------------------------------\e[0m"
@@ -62,7 +81,7 @@ print_dryrun(){
 }
 
 print_warning(){
-    echo -e "\n\e[31m$1\e[0m"
+    echo -e "--- \e[1;33m$1\e[0m"
 }
 
 ####################################################################
@@ -159,6 +178,103 @@ parse_ocsp_params(){
 }
 
 ####################################################################
+## Parse and validate the parameters of the init command
+####################################################################
+parse_init_params(){
+    #Parse the supplied parameters
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dry-run | -d)
+                DRY_RUN=true
+                ;;
+            --cleanup | -c)
+                CLEANUP=true
+                ;;
+            --verbose | -v)
+                VERBOSE=true
+                ;;
+            --help | -h)
+                display_init_help
+                ;;
+            *)
+                echo "Unknown init option: $1"
+                display_init_help
+                ;;
+        esac
+        shift
+    done
+
+    #Cleanup can only be used in combination with if dry-run
+    if [ "$DRY_RUN" = false ] && [ "$CLEANUP" = true ]; then
+        echo -e "\nstellar init \e[31m--cleanup\e[0m can only be used when in combination with --dry-run"
+        display_init_help
+    fi
+}
+
+####################################################################
+## Parse and validate the parameters of the subordinate command
+####################################################################
+parse_subordinate_params(){
+    # Parse command-line options
+    while getopts ":n:b:-:h:dv" opt; do
+    case $opt in
+        n)
+            subordinate_name="$OPTARG"
+            ;;
+        b)
+            subordinate_basename="$OPTARG"
+            ;;
+        d)
+            DRY_RUN=true
+            ;;
+        v)
+            VERBOSE=true
+            ;;
+        h)
+            display_subordinate_help
+            ;;
+        -)
+            case "${OPTARG}" in
+                dry-run|d)
+                    DRY_RUN=true
+                ;;
+                name=*)
+                    subordinate_name="${OPTARG#*=}"
+                ;;
+                basename=*)
+                    subordinate_basename="${OPTARG#*=}"
+                ;;
+                verbose|v)
+                    VERBOSE=true
+                ;;
+                help|h)
+                    display_subordinate_help
+                ;;
+                *)
+                    echo "Unknown subordinate option: --$OPTARG" >&2
+                    display_subordinate_help
+                ;;
+            esac
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
+            display_subordinate_help
+            ;;
+        *)
+            echo "Unknown subordinate option: $OPTARG"
+            display_subordinate_help
+            ;;
+    esac
+    done
+
+    #Both name and basename are required parameters
+    if [ -z "$subordinate_name" ] || [ -z "$subordinate_basename" ]; then
+        echo -e "\n\e[31mBoth --name and --basename are required parameters.\e[0m"
+        display_subordinate_help
+    fi
+}
+
+####################################################################
 ## Set the common variables that most functions use
 ####################################################################
 set_variables(){
@@ -218,6 +334,116 @@ set_variables(){
 }
 
 ####################################################################
+## Set the common variables that most functions use
+## $1 - Path to file containing new password
+####################################################################
+generate_random_password(){
+    #Create the CA key passwords to be used
+    print_debug "creating $1"
+    echo $(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32 ; echo '') > $1
+
+    if [ ! -s "$1" ]; then
+        fatal_error "Failed to generate random password $1!"
+    fi
+}
+
+
+####################################################################
+## Save the password files into kubernetes secret
+## $1 - Passwords folder path
+## $2 - Secret Name
+####################################################################
+save_random_passwords(){
+    #create the Kubernetes Secrets from the generated password files stored in path $1
+    print_info "Saving random passwords at $1 in kubernetes secret $2"
+
+    if $DRY_RUN; then
+        print_dryrun "kubectl create secret generic $2 --from-file="$1" --type=ca-passwords"
+    else
+        kubectl create secret generic $2 --from-file=$1 --type=ca-passwords
+    fi
+}
+
+####################################################################
+## Combine public and private certificates and save to kubernetes
+## $1 - Private Certificates Path
+## $2 - Public Certificates Path
+## $3 - Kubernetes Secret Name
+####################################################################
+save_certificates(){
+    # Create YAML file for private key files
+    kubectl create secret generic --type="ca-certs" "$3" --from-file=$1 --dry-run=client -o yaml > "$(pwd)/tmp/private.yaml"
+    # Create YAML file for certificate files
+    kubectl create secret generic --type="ca-certs" "$3" --from-file=$2 --dry-run=client -o yaml > "$(pwd)/tmp/cert.yaml"
+    #merge the 2 yaml files
+
+    if $DRY_RUN; then
+        if $VERBOSE; then
+            yq ". *= load(\"$(pwd)/tmp/cert.yaml\")" "$(pwd)/tmp/private.yaml"
+        fi
+
+        print_dryrun "kubectl apply -f tmp/secret.yaml"
+    else
+        print_info "Saving Certificates in kubernetes secret $3"
+
+        #merge the two yaml files into 1
+        yq ". *= load(\"$(pwd)/tmp/cert.yaml\")" "$(pwd)/tmp/private.yaml" > "$(pwd)/tmp/secret.yaml"
+        kubectl apply -f tmp/secret.yaml
+    fi
+
+    #Remove temp file
+    print_debug "Cleaning up temp secret files"
+    rm -f "$(pwd)/tmp/secret.yaml" "$(pwd)/tmp/private.yaml" "$(pwd)/tmp/cert.yaml"
+}
+
+####################################################################
+## Create a CSR using provided parameters
+## $1 - Certificate Subject
+## $2 - Private Certificate file
+## $3 - CSR file
+## $4 - Private Certificate Password file
+####################################################################
+generate_csr(){
+    #Define file names for certificates
+
+    print_info "Generating 4096 bit Certificate Signing Request"
+    openssl req -new -config $conf_file -newkey rsa:4096 \
+        -subj "$1" \
+        -keyout $2 \
+        -out $3 \
+        -passout file:$4
+
+    #check that the csr was created and exists.
+    if [ ! -s "$3" ]; then
+        fatal_error "Failed to generate csr for $1"
+    fi
+}
+
+####################################################################
+## Sign CSR using provided parameters
+## $1 - CSR file
+## $2 - Public Certificate file
+## $3 - Openssl Extension
+## $4 - Certificate Lifetime
+## $5 - Should the certificate be published
+####################################################################
+sign_csr(){
+    openssl ca -config $conf_file -in $1 -out $2 \
+        -extensions $3 -passin file:$ca_password_file -days $4 -batch
+
+    #check that the self signed certificate was created and exists.
+    if [ ! -s "$2" ]; then
+        fatal_error "Failed to sign the certificate"
+    fi
+    
+    if $5; then
+        #copy the certificate into the shared web folder so it can be served up by the web server
+        print_info "Publishing Certificate To Web Server"
+        cp -f "$2" "$web_path/"
+    fi
+}
+
+####################################################################
 ## Generate a new CRL file
 ####################################################################
 generate_crl(){
@@ -244,8 +470,6 @@ start_ocsp_responder(){
         -rkey $private_path/$openssl_certBaseFileName-ocsp.key \
         -passin file:$ocsp_password_file \
         -CA $public_path/$openssl_certBaseFileName.crt"
-
-        cleanup
     else
         exec openssl ocsp -index $db_path/index \
         -port 9801 \
@@ -254,6 +478,89 @@ start_ocsp_responder(){
         -passin file:$ocsp_password_file \
         -CA $public_path/$openssl_certBaseFileName.crt
     fi
+}
+
+####################################################################
+## Delete all existing data from known locations
+####################################################################
+cleanup(){
+    #If cleanup is true then delete all the files just created
+    if $CLEANUP; then
+        echo -e "\nCLEANUP: Deleting all files creating during initialization\n"
+        rm -rf /etc/ca/*
+        rm -rf /var/ca/*
+        rm -rf /var/www/html/$openssl_certBaseFileName*.*
+    fi
+}
+
+####################################################################
+## Create new Subordinate Certificates
+####################################################################
+config_subordinate(){
+    #Create the temp folders
+    mkdir /tmp/certs/
+    mkdir /tmp/private/
+    mkdir /tmp/passwords/
+
+    sub_password_file=/tmp/passwords/ca_password
+    sub_crl_password_file=/tmp/passwords/crl_password
+    sub_ocsp_password_file=/tmp/passwords/ocsp_password
+
+    #Generate passwords for this CA
+    generate_random_password $sub_password_file
+    generate_random_password $sub_crl_password_file
+    generate_random_password $sub_ocsp_password_file
+
+    save_random_passwords "/tmp/passwords" "$subordinate_basename-passwords"
+
+    #Create the subordinate CA csr 
+    display_header $COLOUR_INFO "Generating a subordinate CA certificate for $subordinate_name"
+   
+    generate_csr "/C=$openssl_country/ST=$openssl_state/L=$openssl_location/O=$openssl_organizationName/OU=$openssl_organizationUnit/CN=$subordinate_name" \
+        "/tmp/private/$subordinate_basename.key" \
+        "$csr_path/$subordinate_basename.csr" \
+        "$sub_password_file"
+
+    sign_csr "$csr_path/$subordinate_basename.csr" \
+        "/tmp/certs/$subordinate_basename.crt" \
+        "sub_ca_ext" \
+        $openssl_lifeTimeDays \
+        true
+
+    #Create the OCSP Cert
+    display_header $COLOUR_INFO "Generating OCSP signing certificate for $subordinate_name"
+    generate_csr "/C=$openssl_country/ST=$openssl_state/L=$openssl_location/O=$openssl_organizationName/OU=$openssl_organizationUnit/CN=$subordinate_name OCSP Signer" \
+        "/tmp/private/$subordinate_basename-ocsp.key" \
+        "$csr_path/$subordinate_basename-ocsp.csr" \
+        "$sub_ocsp_password_file"
+        
+    sign_csr "$csr_path/$subordinate_basename-ocsp.csr"\
+        "/tmp/certs/$subordinate_basename-ocsp.crt" \
+        "ocsp_ext" \
+        $openssl_lifeTimeDays \
+        true
+
+    display_header $COLOUR_INFO "Generating CRL signing certificate for $subordinate_name"
+
+    generate_csr "/C=$openssl_country/ST=$openssl_state/L=$openssl_location/O=$openssl_organizationName/OU=$openssl_organizationUnit/CN=$subordinate_name CRL Signer" \
+        "/tmp/private/$subordinate_basename-crl.key" \
+        "$csr_path/$subordinate_basename-crl.csr" \
+        "$sub_crl_password_file"
+        
+    sign_csr "$csr_path/$subordinate_basename-crl.csr"\
+        "/tmp/certs/$subordinate_basename-crl.crt" \
+        "crl_ext" \
+        $openssl_lifeTimeDays \
+        true
+
+    #Save the certificates into Kubernetes
+    save_certificates /tmp/private /tmp/certs "$subordinate_basename-certs"
+
+    print_debug "Deleting all temp files"
+    rm -rf /tmp/certs
+    rm -rf /tmp/passwords
+    rm -rf /tmp/private
+
 }
 
 ####################################################################
@@ -312,7 +619,7 @@ init_container() {
         fi
     fi
 
-    #Check for secrets and use them if present, else create new ones an save to kubernetes.
+    #Check for password secrets and use it, else create new passwords and save to kubernetes.
     if kubectl get secret $passwords_secret >/dev/null 2>&1; then
         display_header $COLOUR_WARN "Using private key passwords found in secret $passwords_secret"
 
@@ -325,33 +632,13 @@ init_container() {
 
     else
         display_header $COLOUR_INFO "Generating random passwords"
-
         #Create the CA key passwords to be used
-        print_debug "creating $ca_password_file"
-        echo $(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32 ; echo '') > $ca_password_file
-        print_debug "creating $crl_password_file"
-        echo $(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32 ; echo '') > $crl_password_file
-        print_debug "creating $ocsp_password_file"
-        echo $(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32 ; echo '') > $ocsp_password_file
-
-        if [ ! -s "$ca_password_file" ]; then
-            fatal_error "Failed to generate random password!"
-        fi
-        if [ ! -s "$crl_password_file" ]; then
-            fatal_error "Failed to generate random crl signing password!"
-        fi
-        if [ ! -s "$ocsp_password_file" ]; then
-            fatal_error "Failed to generate random ocsp signing password!"
-        fi
+        generate_random_password $ca_password_file
+        generate_random_password $crl_password_file
+        generate_random_password $ocsp_password_file
 
         #create the Kubernetes Secrets from the generated password files
-        print_info "Saving random passwords in kubernetes secret"
-
-        if $DRY_RUN; then
-            print_dryrun "kubectl create secret generic $passwords_secret --from-file=$passwords_path --type=ca-passwords"
-        else
-            kubectl create secret generic $passwords_secret --from-file=$passwords_path --type=ca-passwords
-        fi
+        save_random_passwords $passwords_path $passwords_secret
     fi
 
     #Check for existing Certificates (CA, CRL, OSCP) and load them, otherwise create a self signed certificate along with CRL and OSCP. Then save to kubernetes.
@@ -360,10 +647,21 @@ init_container() {
         
         #Check that the DB file and the Serial file exist, if not its an invalid state.
         if [ ! -e "$db_path/index" ]; then
-            fatal_error "Openssl Text database file missing!"
+            print_warning "Openssl Text database file missing!"
+            print_info "Creating new Certificate Authority text database file"
+            touch $db_path/index
         fi
         if [ ! -e "$db_path/serial" ]; then
-            fatal_error "Openssl serial file missing!"
+            print_warning "Openssl serial file missing!"
+            print_info "Creating new Certificate Authority serial file"
+            openssl rand -hex 16  > $db_path/serial
+        fi
+        #Confirm that the above files were actually created.
+        if [ ! -e "$db_path/index" ]; then
+            fatal_error "Failed to create text database file!"
+        fi
+        if [ ! -e "$db_path/serial" ]; then
+            fatal_error "Failed to create random database serial!"
         fi
 
         # Get all keys in the secret. There should be a *.key and *.crt pair for each certificate
@@ -400,11 +698,9 @@ init_container() {
 
         #Create the required files to operate as a CA.
         print_info "Creating Certificate Authority text database file"
-        rm -f $db_path/index
         touch $db_path/index
 
         print_info "Creating Certificate Authority serial file"
-        rm -f $db_path/serial
         openssl rand -hex 16  > $db_path/serial
 
         #Confirm that the above files were actually created.
@@ -415,116 +711,61 @@ init_container() {
             fatal_error "Failed to create random database serial!"
         fi
 
-        #Define file names for certificates
-        private_cert_file="$private_path/$openssl_certBaseFileName.key"
-        public_cert_file="$public_path/$openssl_certBaseFileName.crt"
-        csr_file="$csr_path/$openssl_certBaseFileName.csr"
-
-        print_info "Generating 4096 bit Certificate Signing Request"
-        #Create the self signed root CA certificate
-        openssl req -new -config $conf_file -newkey rsa:4096 \
-            -subj "/C=$openssl_country/ST=$openssl_state/L=$openssl_location/O=$openssl_organizationName/OU=$openssl_organizationUnit/CN=$openssl_name" \
-            -out $csr_file \
-            -keyout $private_cert_file \
-            -passout file:$ca_password_file
+        #Create the self signed root CA certificate        
+        generate_csr "/C=$openssl_country/ST=$openssl_state/L=$openssl_location/O=$openssl_organizationName/OU=$openssl_organizationUnit/CN=$openssl_name" \
+            "$private_path/$openssl_certBaseFileName.key" \
+            "$csr_path/$openssl_certBaseFileName.csr" \
+            $ca_password_file
         
         display_header $COLOUR_INFO "Self Signing CSR"
 
-        openssl ca -selfsign -config $conf_file -in $csr_file -out $public_cert_file \
-            -extensions root_ca_ext -passin file:$ca_password_file -days $openssl_lifeTimeDays -batch
+        openssl ca -selfsign -config $conf_file -in "$csr_path/$openssl_certBaseFileName.csr" \
+            -out $public_path/$openssl_certBaseFileName.crt \
+            -extensions root_ca_ext \
+            -passin file:$ca_password_file \
+            -days $openssl_lifeTimeDays -batch
 
         #check that the signed certificate was created and exists.
-        if [ ! -s "$public_cert_file" ]; then
+        if [ ! -s "$public_path/$openssl_certBaseFileName.crt" ]; then
             fatal_error "Failed to succesfully generate a self signed root certificate"
         else
             #copy the certificate into the shared web folder so it can be served up by the web server
             print_info "Publishing CA Certificate"
-            cp -f "$public_cert_file" "$web_path/"
+            cp -f "$public_path/$openssl_certBaseFileName.crt" "$web_path/"
         fi
 
         display_header $COLOUR_INFO "Generating OCSP signing certificate for $openssl_name"
-
-        #Define file names for certificates
-        private_cert_file="$private_path/$openssl_certBaseFileName-ocsp.key"
-        public_cert_file="$public_path/$openssl_certBaseFileName-ocsp.crt"
-        csr_file="$csr_path/$openssl_certBaseFileName-ocsp.csr"
-
-        print_info "Generating 4096 bit Certificate Signing Request"
-        openssl req -new -config $conf_file -newkey rsa:4096 \
-            -subj "/C=$openssl_country/ST=$openssl_state/L=$openssl_location/O=$openssl_organizationName/OU=$openssl_organizationUnit/CN=$openssl_name OCSP Responder" \
-            -keyout $private_cert_file \
-            -out $csr_file \
-            -passout file:$ocsp_password_file
-
-        openssl ca -config $conf_file -in $csr_file -out $public_cert_file \
-            -extensions ocsp_ext -passin file:$ca_password_file -days $openssl_lifeTimeDays -batch
-
-        #check that the self signed certificate was created and exists.
-        if [ ! -s "$public_cert_file" ]; then
-            fatal_error "Failed to generate a ocsp signing certificate"
-        else
-            #copy the certificate into the shared web folder so it can be served up by the web server
-            print_info "Publishing OCSP Certificate"
-            cp -f "$public_cert_file" "$web_path/"
-        fi
+        
+        generate_csr "/C=$openssl_country/ST=$openssl_state/L=$openssl_location/O=$openssl_organizationName/OU=$openssl_organizationUnit/CN=$openssl_name OCSP Signer" \
+            "$private_path/$openssl_certBaseFileName-ocsp.key" \
+            "$csr_path/$openssl_certBaseFileName-ocsp.csr" \
+            $ocsp_password_file
+           
+        sign_csr "$csr_path/$openssl_certBaseFileName-ocsp.csr"\
+            "$public_path/$openssl_certBaseFileName-ocsp.crt" \
+            "ocsp_ext" \
+            $openssl_lifeTimeDays \
+            true
 
         display_header $COLOUR_INFO "Generating CRL signing certificate for $openssl_name"
 
-        #Define file names for certificates
-        private_cert_file="$private_path/$openssl_certBaseFileName-crl.key"
-        public_cert_file="$public_path/$openssl_certBaseFileName-crl.crt"
-        csr_file="$csr_path/$openssl_certBaseFileName-crl.csr"
+        generate_csr "/C=$openssl_country/ST=$openssl_state/L=$openssl_location/O=$openssl_organizationName/OU=$openssl_organizationUnit/CN=$openssl_name CRL Signer" \
+            "$private_path/$openssl_certBaseFileName-crl.key" \
+            "$csr_path/$openssl_certBaseFileName-crl.csr" \
+            $crl_password_file
+           
+        sign_csr "$csr_path/$openssl_certBaseFileName-crl.csr"\
+            "$public_path/$openssl_certBaseFileName-crl.crt" \
+            "crl_ext" \
+            $openssl_lifeTimeDays \
+            true
 
-        print_info "Generating 4096 bit Certificate Signing Request"
-
-        openssl req -new -config $conf_file -newkey rsa:4096 \
-            -subj "/C=$openssl_country/ST=$openssl_state/L=$openssl_location/O=$openssl_organizationName/OU=$openssl_organizationUnit/CN=$openssl_name CRL Signer" \
-            -keyout $private_cert_file \
-            -out $csr_file \
-            -passout file:$crl_password_file
-
-        openssl ca -config $conf_file -in $csr_file -out $public_cert_file \
-            -extensions crl_ext -passin file:$ca_password_file -days $openssl_lifeTimeDays -batch
-
-        #check that the self signed certificate was created and exists.
-        if [ ! -s "$public_cert_file" ]; then
-            fatal_error "Failed to generate a ocsp signing certificate"
-        else
-            #copy the certificate into the shared web folder so it can be served up by the web server
-            print_info "Publishing CRL Certificate"
-            cp -f "$public_cert_file" "$web_path/"
-        fi
-
-        # Create YAML file for private key files
-        kubectl create secret generic --type="ca-certs" "$certs_secret" --from-file=$private_path --dry-run=client -o yaml > "$(pwd)/tmp/private.yaml"
-        # Create YAML file for certificate files
-        kubectl create secret generic --type="ca-certs" "$certs_secret" --from-file=$public_path --dry-run=client -o yaml > "$(pwd)/tmp/cert.yaml"
-        #merge the 2 yaml files
-
-        if $DRY_RUN; then
-            if $VERBOSE; then
-                yq ". *= load(\"$(pwd)/tmp/cert.yaml\")" "$(pwd)/tmp/private.yaml"
-            fi
-        else
-            print_info "Saving Certificates in kubernetes secret"
-
-            yq ". *= load(\"$(pwd)/tmp/cert.yaml\")" "$(pwd)/tmp/private.yaml" > "$(pwd)/tmp/secret.yaml"
-            kubectl apply -f tmp/secret.yaml
-            #Remove temp file
-            rm "tmp/private.yaml" "tmp/cert.yaml" "tmp/secret.yaml"
-        fi
-
+        #Save the certificates into Kubernetes
+        save_certificates $private_path $public_path $certs_secret
     fi
-}
 
-cleanup(){
-    #If cleanup is true then delete all the files just created
-    if $CLEANUP; then
-        echo -e "\nCLEANUP: Deleting all files creating during initialization\n"
-        rm -rf /etc/ca/*
-        rm -rf /var/ca/*
-        rm -rf /var/www/html/$openssl_certBaseFileName*.*
-    fi
+    #finally allow cleanup to run if its enabled
+    cleanup
 }
 
 ####################################################################
@@ -551,6 +792,9 @@ case "$1" in
     ocsp)
         COMMAND="ocsp"
         ;;
+    subordinate)
+        COMMAND="subordinate"
+        ;;
     *)
         echo "Unknown command: $1"
         echo "Did you forget to include the command that stellar should run?"
@@ -570,6 +814,9 @@ elif [ "$COMMAND" = 'gencrl' ]; then
 elif [ "$COMMAND" = 'ocsp' ]; then
     parse_ocsp_params "$@"
     start_ocsp_responder
+elif [ "$COMMAND" = 'subordinate' ]; then
+    parse_subordinate_params "$@"
+    config_subordinate
 else
     #no command was passed in
     display_help
