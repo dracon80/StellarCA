@@ -43,11 +43,12 @@ FROM stellarca_base as build_production
 ########################################################
 FROM build_${ENVIRONMENT}
 LABEL maintainer="dracon80 https://github.com/dracon80"
+LABEL github="https://github.com/dracon80/StellarCA"
 
 WORKDIR /app
 
-COPY init.sh ./
-COPY openssl.conf ./
+COPY stellarca/init.sh ./
+COPY stellarca/openssl.conf ./
 
 RUN mkdir /app/tmp
 RUN chmod 744 /app/init.sh

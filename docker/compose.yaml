@@ -12,7 +12,7 @@ services:
     volumes:
       - ca-data:/var/ca
       - web-data:/var/www/html
-      - ../config.yaml:/app/config.yaml
+      - ../stellarca/config.yaml:/app/config.yaml
     env_file: ../.k8s/devcontainer.env
   web:
     image: nginx:alpine

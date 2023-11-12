@@ -8,7 +8,7 @@ _BUILD_ARGS_DOCKERFILE ?= Dockerfile
 _DOCKER_BUILD_ARGS ?= production
 
 _builder:
-	docker build --tag ${DOCKER_USERNAME}/${APPLICATION_NAME}:${_BUILD_ARGS_TAG} --build-arg ${_BUILD_ARGS_DOCKERFILE} -f docker/${_BUILD_ARGS_DOCKERFILE} .
+	docker build --tag ${DOCKER_USERNAME}/${APPLICATION_NAME}:${_BUILD_ARGS_TAG} --build-arg ${_BUILD_ARGS_DOCKERFILE} -f ../docker/${_BUILD_ARGS_DOCKERFILE} ..
 
 _pusher:
 	docker push ${DOCKER_USERNAME}/${APPLICATION_NAME}:${_BUILD_ARGS_TAG}
