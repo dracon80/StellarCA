@@ -61,4 +61,4 @@ RUN chmod 770 /app /var/ca /etc/ca
 
 USER stellar
 ENTRYPOINT [ "/app/entrypoint.sh" ]
-CMD ["stellarca", "--init"]
+CMD ["stellar"]
