@@ -11,12 +11,12 @@ RUN apk add --no-cache ca-certificates openssl curl envsubst
 RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && chmod +x /usr/bin/yq
 
 #Install kubectl
-RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
-    install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && \
-    rm -f kubectl
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+    && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl \
+    && rm -f kubectl
 
-#Create user for Container
-RUN adduser -u 101 stellar stellar -D
+#Create user Stellar and nginx group so that nginx container can read files created
+RUN addgroup -g 101 nginx && adduser -G nginx -u 1000 stellar -D
 
 #Create stellar system folders
 WORKDIR /app
@@ -51,13 +51,14 @@ FROM build_${ENVIRONMENT}
 LABEL maintainer="dracon80 https://github.com/dracon80"
 LABEL github="https://github.com/dracon80/StellarCA"
 
+#Assign permissions
+RUN chown stellar:nginx -R /app /var/www/html /var/ca /etc/ca \
+    && chmod 770 /app /var/ca /etc/ca \
+    && chown stellar:nginx -R /var/www/html \
+    && chmod 774 /var/www/html
+
 VOLUME ["/var/ca", "/var/www/html"]
 EXPOSE 9801/tcp
-
-#Assign permissions
-RUN chown stellar:stellar -R /app /var/www/html /var/ca /etc/ca /app
-RUN chmod 774 /var/www/html
-RUN chmod 770 /app /var/ca /etc/ca
 
 USER stellar
 ENTRYPOINT [ "/app/entrypoint.sh" ]
