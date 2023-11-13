@@ -11,15 +11,25 @@ services:
       - "9801:9801"
     volumes:
       - ca-data:/var/ca
-      - web-data:/var/www/html
       - ../stellarca/config.yaml:/app/config.yaml
+      - ../stellarca/entrypoint.sh:/app/entrypoint.sh
+      - ../stellarca/stellar:/app/stellar
+      - ../stellarca/openssl.conf:/app/openssl.conf
+      - web-data:/var/www/html/:rw
     env_file: ../.k8s/devcontainer.env
   web:
-    image: nginx:alpine
+    image: nginxinc/nginx-unprivileged:alpine
+    depends_on:
+      - ca
     ports:
-      - "80:80"
+      - "80:8080"
     volumes:
-      - web-data:/usr/share/nginx/html:ro
+      - type: volume
+        source: web-data
+        target: /usr/share/nginx/html
+        read_only: true
+        volume:
+          nocopy: true
 volumes:
   ca-data: {}
   web-data: {}
