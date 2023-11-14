@@ -22,7 +22,7 @@ display_help() {
 
 display_init_help(){
     echo -e "\n\e[34mUsage:\e[0m stellar init [OPTIONS]\n"
-    echo -e "Initalizes the container by either using existing Kubernetes Secrets and Configmaps or by creating a new config based on config.yaml.\n"
+    echo -e "Initalizes the container by either using existing Kubernetes Secrets and Configmaps or by creating a new config based on stellar-config.yaml.\n"
 
     echo -e "\e[34mOptions:\e[0m"
     echo -e "  --dry-run | -d     This will run the script and create all required file, and display the kubectl commands that would have been called"
@@ -282,18 +282,18 @@ set_variables(){
     set -o allexport
 
     # Run yq to extract the config data supplied
-    openssl_name=$(yq '.openssl.name' config.yaml)
-    openssl_certBaseFileName=$(yq '.openssl.certBaseFileName' config.yaml)
-    openssl_ocspBaseURL=$(yq '.openssl.ocspBaseURL' config.yaml)
-    openssl_aiaBaseURL=$(yq '.openssl.aiaBaseURL' config.yaml)
-    openssl_crlBaseURL=$(yq '.openssl.crlBaseURL' config.yaml)
-    openssl_country=$(yq '.openssl.country' config.yaml)
-    openssl_organizationName=$(yq '.openssl.organizationName' config.yaml)
-    openssl_organizationUnit=$(yq '.openssl.organizationUnit' config.yaml)
-    openssl_state=$(yq '.openssl.state' config.yaml)
-    openssl_location=$(yq '.openssl.location' config.yaml)
-    openssl_lifeTimeDays=$(yq '.openssl.lifeTimeDays' config.yaml)
-    openssl_defaultDays=$(yq '.openssl.defaultDays' config.yaml)
+    openssl_name=$(yq '.openssl.name' stellar-config.yaml)
+    openssl_certBaseFileName=$(yq '.openssl.certBaseFileName' stellar-config.yaml)
+    openssl_ocspBaseURL=$(yq '.openssl.ocspBaseURL' stellar-config.yaml)
+    openssl_aiaBaseURL=$(yq '.openssl.aiaBaseURL' stellar-config.yaml)
+    openssl_crlBaseURL=$(yq '.openssl.crlBaseURL' stellar-config.yaml)
+    openssl_country=$(yq '.openssl.country' stellar-config.yaml)
+    openssl_organizationName=$(yq '.openssl.organizationName' stellar-config.yaml)
+    openssl_organizationUnit=$(yq '.openssl.organizationUnit' stellar-config.yaml)
+    openssl_state=$(yq '.openssl.state' stellar-config.yaml)
+    openssl_location=$(yq '.openssl.location' stellar-config.yaml)
+    openssl_lifeTimeDays=$(yq '.openssl.lifeTimeDays' stellar-config.yaml)
+    openssl_defaultDays=$(yq '.openssl.defaultDays' stellar-config.yaml)
 
     #Turn off the auto export of variables
     set +o allexport
@@ -568,9 +568,9 @@ config_subordinate(){
 ####################################################################
 init_container() {
 
-    #Check that config.yaml exists
-    if [ ! -e "config.yaml" ]; then
-        fatal_error "config.yaml not found"
+    #Check that stellar-config.yaml exists
+    if [ ! -e "stellar-config.yaml" ]; then
+        fatal_error "stellar-config.yaml not found"
     fi
 
     #Create the required folders.
@@ -598,7 +598,7 @@ init_container() {
     else
         display_header $COLOUR_INFO "Creating a new Config file for $openssl_name"
 
-        print_debug "replacing tokens in openssl.conf template with values from config.yaml"
+        print_debug "replacing tokens in openssl.conf template with values from stellar-config.yaml"
 
         #Create the openssl config file by substituting any place holders with Environment variables
         envsubst '$openssl_name,$openssl_certBaseFileName,$openssl_ocspBaseURL,$openssl_aiaBaseURL,$openssl_crlBaseURL,

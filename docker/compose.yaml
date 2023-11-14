@@ -11,7 +11,7 @@ services:
       - "9801:9801"
     volumes:
       - ca-data:/var/ca
-      - ../stellarca/config.yaml:/app/config.yaml
+      - ../stellarca/stellar-config.yaml:/app/config.yaml
       - ../stellarca/entrypoint.sh:/app/entrypoint.sh
       - ../stellarca/stellar:/app/stellar
       - ../stellarca/openssl.conf:/app/openssl.conf

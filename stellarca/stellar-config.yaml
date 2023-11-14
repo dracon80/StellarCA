@@ -1,9 +1,9 @@
-# yaml-language-server: $schema=config-schema.json
+# yaml-language-server: $schema=stellar-schema.json
 
 configVersion: 1
 openssl:
-  name: Celestial Sovereign CA
-  certBaseFileName: celestialsovereign
+  name: Stellar CA
+  certBaseFileName: stellar
   ocspBaseURL: http://ocsp.home.arpa/
   aiaBaseURL: http://pki.home.arpa/
   crlBaseURL: http://pki.home.arpa/

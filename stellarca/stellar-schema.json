@@ -1,0 +1,113 @@
+{
+  "$defs": {
+    "openssl": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "A name that will be used when creating a certificate for this Certificate Authority. This will be the name that the CA is known as when looking at the issued by field on certificates the CA issues.",
+          "title": "Certificate Authority Name",
+          "type": "string"
+        },
+        "certBaseFileName": {
+          "description": "All certificates generated related directly to this CA will use this value as a base file name",
+          "minLength": 2,
+          "pattern": "^[A-Za-z0-9-._~]+$",
+          "title": "Base Filename for Certificate",
+          "type": "string"
+        },
+        "ocspBaseURL": {
+          "description": "The base URL, including protocol that the ocsp will be available at. e.g http://ocsp.example.com:9002/ or http://ocsp.example.com/",
+          "pattern": "^(https?://)[a-zA-Z0-9-.]+(:\\d+)?/",
+          "title": "ocspBaseURL",
+          "type": "string"
+        },
+        "aiaBaseURL": {
+          "description": "The base URL, including protocol that the CA certificate will be available from. For example http://pki.example.com/ or http://pki.example.com:8080/ . Please note that a certificate file with a name based on certBaseFileName will be appended to the end of this URL",
+          "pattern": "^(https?://)[a-zA-Z0-9-.]+(:\\d+)?/",
+          "title": "aiaBaseURL",
+          "type": "string"
+        },
+        "crlBaseURL": {
+          "description": "The base URL, including protocol that the CRL will be available from. For example http://pki.example.com/ or http://pki.example.com:8080/ . Please note that a CRL file with a name based on certBaseFileName will be appended to the end of this URL",
+          "pattern": "^(https?://)[a-zA-Z0-9-.]+(:\\d+)?/",
+          "title": "crlBaseURL",
+          "type": "string"
+        },
+        "country": {
+          "description": "The 2 letter alpha code for the country the CA is running in",
+          "pattern": "^[A-Z]{2}$",
+          "title": "Country",
+          "type": "string"
+        },
+        "organizationName": {
+          "description": "The name of the organization that is running the Certificate Authority",
+          "title": "Organization Name",
+          "type": "string"
+        },
+        "organizationUnit": {
+          "description": "The name of the organizational unit that is responsible for running the Certificate Authority",
+          "title": "Organizational Unit",
+          "type": "string"
+        },
+        "state": {
+          "description": "The name of the state that the Certificate Authority is located in",
+          "title": "State",
+          "type": "string"
+        },
+        "location": {
+          "description": "The name of the city, town or general location that is Certificate Authority is located",
+          "title": "Location",
+          "type": "string"
+        },
+        "lifeTimeDays": {
+          "description": "The number of days from the date of creation that the Certificate for the CA will be valid",
+          "title": "Certificate Authority Validity Period",
+          "type": "integer"
+        },
+        "defaultDays": {
+          "default": 731,
+          "description": "The default number of days a newly created certificate will be valid for",
+          "title": "Default Certificate Validity",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "certBaseFileName",
+        "ocspBaseURL",
+        "aiaBaseURL",
+        "crlBaseURL",
+        "country",
+        "organizationName",
+        "organizationUnit",
+        "state",
+        "location",
+        "lifeTimeDays",
+        "defaultDays"
+      ],
+      "title": "Certificate Authority Configuration",
+      "type": "object"
+    }
+  },
+  "title": "Stella CA Configuration",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "configVersion": {
+      "default": 1,
+      "description": "The configuration version is used by Stellar CA to validate the configuration values in the yaml configuration",
+      "maximum": 1,
+      "minimum": 1,
+      "title": "Configuration Version",
+      "type": "integer"
+    },
+    "openssl": {
+      "$ref": "#/$defs/openssl"
+    }
+  },
+  "required": [
+    "openssl",
+    "configVersion"
+  ]
+}
