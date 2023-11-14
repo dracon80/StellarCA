@@ -744,7 +744,7 @@ init_container() {
         sign_csr "$csr_path/$openssl_certBaseFileName-ocsp.csr"\
             "$public_path/$openssl_certBaseFileName-ocsp.crt" \
             "ocsp_ext" \
-            $openssl_lifeTimeDays \
+            $openssl_defaultDays \
             true
 
         display_header $COLOUR_INFO "Generating CRL signing certificate for $openssl_name"
@@ -757,7 +757,7 @@ init_container() {
         sign_csr "$csr_path/$openssl_certBaseFileName-crl.csr"\
             "$public_path/$openssl_certBaseFileName-crl.crt" \
             "crl_ext" \
-            $openssl_lifeTimeDays \
+            $openssl_defaultDays \
             true
 
         #Save the certificates into Kubernetes
