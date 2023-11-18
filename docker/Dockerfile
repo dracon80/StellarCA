@@ -60,6 +60,6 @@ RUN chown stellar:nginx -R /app /var/www/html /var/ca /etc/ca \
 VOLUME ["/var/ca", "/var/www/html"]
 EXPOSE 9801/tcp
 
-USER stellar
+USER 1000
 ENTRYPOINT [ "/app/entrypoint.sh" ]
 CMD ["stellar"]
