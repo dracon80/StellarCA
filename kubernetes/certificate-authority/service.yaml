@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stellar-ocsp-service
+spec:
+  selector:
+    app: stellar
+  type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+  - name: stellar-ocsp
+    protocol: TCP
+    port: 80
+    targetPort: 9801

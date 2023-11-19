@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stellar-ca-deployment
+spec:
+  selector:
+    matchLabels:
+      app: stellar
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 100%
+      maxUnavailable: 100%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: stellar
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: stellar-ca
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+          image: liquiddragon/stellarca:latest
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          ports:
+            - containerPort: 9801
+              name: ocsp
+          volumeMounts:
+            - name: ca-data-pvc
+              mountPath: /var/ca/
+            - name: web-data-pvc
+              mountPath: /var/www/html/
+            - name: stellar-configmap
+              mountPath: /app/stellar-config.yaml
+              subPath: stellar-config.yaml
+
+      volumes:
+        - name: ca-data-pvc
+          persistentVolumeClaim:
+            claimName: stellar-data-pvc
+        - name: web-data-pvc
+          persistentVolumeClaim:
+            claimName: stellar-web-data-pvc
+        - name: stellar-configmap
+          configMap:
+            name: stellar-configmap
+      restartPolicy: Always

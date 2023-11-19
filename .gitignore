@@ -1,2 +1,5 @@
 .k8s/
 tmp/
+
+#Ignore the stellar-config.yaml files in the kubernetes folders as they are deployment specific
+kubernetes/**/stellar-config.yaml
