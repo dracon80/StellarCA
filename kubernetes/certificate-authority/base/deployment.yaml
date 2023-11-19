@@ -17,6 +17,7 @@ spec:
       labels:
         app: stellar
     spec:
+      serviceAccountName: stellar-service-account
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
