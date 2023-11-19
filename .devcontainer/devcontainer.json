@@ -31,7 +31,9 @@
 		// Configure properties specific to VS Code.
 		"vscode": {
 			// Set *default* container specific settings.json values on container create.
-			"extensions": ["codezombiech.gitignore", "ms-azuretools.vscode-docker","redhat.vscode-yaml","ms-vscode.makefile-tools", "lunuan.kubernetes-templates"]
+			"extensions": ["codezombiech.gitignore", "ms-azuretools.vscode-docker","redhat.vscode-yaml",
+			"ms-vscode.makefile-tools", "lunuan.kubernetes-templates","streetsidesoftware.code-spell-checker",
+			"bierner.markdown-footnotes","davidanson.vscode-markdownlint"]
 		}
 	}
 
