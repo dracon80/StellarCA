@@ -52,7 +52,7 @@ display_subordinate_help(){
 
     echo -e "\e[34mExamples:\e[0m"
     echo -e "** To create certificates for a subordinate named Sub CA, and have the certificates name subca.crt, subca-crl.crt and subca-ocsp.crt"
-    echo -e "    stellar subordinate --name \"Sub CA\" --basename subca"
+    echo -e "    stellar subordinate --name=\"Sub CA\" --basename=subca"
 
     exit 0
 }
@@ -278,6 +278,12 @@ parse_subordinate_params(){
 ## Set the common variables that most functions use
 ####################################################################
 set_variables(){
+
+    #Check that stellar-config.yaml exists
+    if [ ! -e "stellar-config.yaml" ]; then
+        fatal_error "stellar-config.yaml not found"
+    fi
+
     #Make the follow variables env variables
     set -o allexport
 
@@ -567,11 +573,6 @@ config_subordinate(){
 ## Initialize the container
 ####################################################################
 init_container() {
-
-    #Check that stellar-config.yaml exists
-    if [ ! -e "stellar-config.yaml" ]; then
-        fatal_error "stellar-config.yaml not found"
-    fi
 
     #Create the required folders.
     mkdir -p $conf_path
