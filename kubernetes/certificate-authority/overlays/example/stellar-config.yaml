@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=../../../../stellarca/stellar-schema.json
+
 configVersion: 1
 openssl:
   name: Stellar CA
