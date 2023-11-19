@@ -6,15 +6,11 @@ services:
       context: ../
       dockerfile: ./docker/Dockerfile
       args:
-        ENVIRONMENT: "development"
+        ENVIRONMENT: "production"
     ports:
       - "9801:9801"
     volumes:
       - ca-data:/var/ca
-      - ../stellarca/stellar-config.yaml:/app/config.yaml
-      - ../stellarca/entrypoint.sh:/app/entrypoint.sh
-      - ../stellarca/stellar:/app/stellar
-      - ../stellarca/openssl.conf:/app/openssl.conf
       - web-data:/var/www/html/:rw
     env_file: ../.k8s/devcontainer.env
   web:
