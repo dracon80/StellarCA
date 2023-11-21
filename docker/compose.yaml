@@ -12,6 +12,7 @@ services:
     volumes:
       - ca-data:/var/ca
       - web-data:/var/www/html/:rw
+      - ../stellar/stellar-config.yaml:/app/stellar-config.yaml
     env_file: ../.k8s/devcontainer.env
   web:
     image: nginxinc/nginx-unprivileged:alpine
