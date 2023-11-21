@@ -321,7 +321,7 @@ set_variables(){
     newcerts_path=$ca_var_path/certs
     db_path=$ca_var_path/db
     ######Kubernetes Config Map and Secrets######
-    openssl_configmap=$openssl_certBaseFileName-configmap
+    openssl_configmap=$openssl_certBaseFileName-openssl-configmap
     passwords_secret=$openssl_certBaseFileName-passwords
     certs_secret=$openssl_certBaseFileName-certs
     ######Shared Web distributing CRL and CRT######
