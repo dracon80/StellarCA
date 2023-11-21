@@ -1,20 +1,22 @@
 # Stellar Certificate Authority
 
-Stellar Certificate Authority is a simply collection of shell script and kubernetes definitions to help deploy a root certificate authority and subordinate certificate authorities on either Kubernetes or Docker.
+Stellar Certificate Authority is a simply collection of shell script and kubernetes definitions to help deploy a root certificate authority and subordinate certificate authorities in Kubernetes.
 
-Openssl is used as the Certificate Authority and OCSP responder and a shared nginx web server to distribute the generated certificate chains, and CRL files for each fo the Certificate Authorities.
+Openssl is used as the Certificate Authority and OCSP responder and a shared nginx web server to distribute the generated certificate chains, and CRL files for each of the Certificate Authorities.
 
-Instructions for deploying the solution to kubernetes are available for the [Web Server](./kubernetes/web/README.md) and [Certificate Server](./kubernetes/certificate-authority/README.md). Deploying to Docker is a simple matter of editing the compose.yaml file to point to a valid stellar-config.yaml file and running `docker compose build && docker compose up -d`
+## Kubernetes
 
-## Configuration
+Instructions for deploying the solution to kubernetes are available for the [Web Server](./kubernetes/web/README.md) and [Certificate Server](./kubernetes/certificate-authority/README.md).
 
-The configuration of both Docker and Kubernetes deployments are made by editing a stellar-config.yaml file and providing it to the deployed image. The yaml file has a json schema available to help you edit the file and make sure you have valid settings. The options with the yaml file are as follows.
+## Configuration File - _stellar-config.yaml_
 
-## Yaml Schema
+The configuration is made by editing a [stellar-config.yaml](./stellarca/stellar-config.yaml) file and mounting it at _/app/stellar-config.yaml_ in the deployed image. The stellar-config yaml file has a [json schema available](./stellarca/stellar-schema.json) to help you edit the file and make sure you have valid settings.
 
-&#36;schema: [https://json-schema.org/draft/2020-12/schema](https://json-schema.org/draft/2020-12/schema)
+The properties available in the yaml file are;
 
-The schema **does not** accept additional properties.
+### Yaml Schema
+
+The schema **does not** accept any additional properties.
 
 **_Properties_**
 
