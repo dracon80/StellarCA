@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../../../stellarca/stellar-schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/dracon80/StellarCA/main/stellarca/stellar-schema.json
 
 configVersion: 1
 openssl:
