@@ -435,7 +435,7 @@ generate_csr(){
 ####################################################################
 sign_csr(){
     openssl ca -config $conf_file -in $1 -out $2 \
-        -extensions $3 -passin file:$ca_password_file -days $4 -batch
+        -extensions $3 -passin file:$ca_password_file -days $4 -notext -batch
 
     #check that the self signed certificate was created and exists.
     if [ ! -s "$2" ]; then
