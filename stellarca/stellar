@@ -760,11 +760,11 @@ init_container() {
 
         #Save the certificates into Kubernetes
         save_certificates $private_path $public_path $certs_secret
-
-        #copy the ca-bundle into the shared web folder with the name of if this CA so it can be served up by the web server
-        print_info "Publishing CA Certificate"
-        cp -f "$public_path/ca-bundle.crt" "$web_path/$openssl_certBaseFileName.crt"
     fi
+
+     #copy the ca-bundle into the shared web folder with the name of if this CA so it can be served up by the web server
+    print_info "Publishing CA Certificate"
+    cp -f "$public_path/ca-bundle.crt" "$web_path/$openssl_certBaseFileName.crt"
 
     #finally allow cleanup to run if its enabled
     cleanup
