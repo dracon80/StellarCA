@@ -431,7 +431,6 @@ generate_csr(){
 ## $2 - Public Certificate file
 ## $3 - Openssl Extension
 ## $4 - Certificate Lifetime
-## $5 - Should the certificate be published
 ####################################################################
 sign_csr(){
     openssl ca -config $conf_file -in $1 -out $2 \
@@ -440,12 +439,6 @@ sign_csr(){
     #check that the self signed certificate was created and exists.
     if [ ! -s "$2" ]; then
         fatal_error "Failed to sign the certificate"
-    fi
-    
-    if $5; then
-        #copy the certificate into the shared web folder so it can be served up by the web server
-        print_info "Publishing Certificate To Web Server"
-        cp -f "$2" "$web_path/"
     fi
 }
 
@@ -533,6 +526,11 @@ config_subordinate(){
         $openssl_lifeTimeDays \
         true
 
+    #Add to the CA Bundle to build the chain
+    print_info "Creating CA Bundle"
+    openssl x509 -in "/tmp/certs/$subordinate_basename.crt" -inform PEM -outform PEM -out "/tmp/certs/ca-bundle.crt"
+    cat "$public_path/ca-bundle.crt" >> "/tmp/certs/ca-bundle.crt"
+
     #Create the OCSP Cert
     display_header $COLOUR_INFO "Generating OCSP signing certificate for $subordinate_name"
     generate_csr "/C=$openssl_country/ST=$openssl_state/L=$openssl_location/O=$openssl_organizationName/OU=$openssl_organizationUnit/CN=$subordinate_name OCSP Signer" \
@@ -561,6 +559,9 @@ config_subordinate(){
 
     #Save the certificates into Kubernetes
     save_certificates /tmp/private /tmp/certs "$subordinate_basename-certs"
+
+    #Publish Certificate to Web Share
+    cp -f "/tmp/certs/ca-bundle.crt" "$web_path/$subordinate_basename.crt"
 
     print_debug "Deleting all temp files"
     rm -rf /tmp/certs
@@ -592,7 +593,7 @@ init_container() {
         fatal_error "Failed to create random seed data file!"
     fi
 
-    #Check for openssl config file in configmap, and if present use it, otherwise create a new file one from template and create a configmap in kubernetes.
+    #Check for openssl config file in configmap, and if present use it, otherwise create a new file from template and create a configmap in kubernetes.
     if kubectl get configmap "$openssl_configmap" >/dev/null 2>&1; then
         display_header $COLOUR_WARN "Using existing configmap $openssl_configmap"
         kubectl get configmap $openssl_configmap -o jsonpath='{.data.openssl\.conf}' > $conf_file
@@ -642,7 +643,7 @@ init_container() {
         save_random_passwords $passwords_path $passwords_secret
     fi
 
-    #Check for existing Certificates (CA, CRL, OSCP) and load them, otherwise create a self signed certificate along with CRL and OSCP. Then save to kubernetes.
+    #Check for existing Certificates (CA, CHAIN, CRL, OSCP) and load them, otherwise create a self signed certificate along with CRL and OSCP. Then save to kubernetes.
     if kubectl get secret $certs_secret >/dev/null 2>&1; then
         display_header $COLOUR_WARN "Using Certificates found in $certs_secret"
         
@@ -685,12 +686,8 @@ init_container() {
                 # Get the value for the public certificate
                 value=$(kubectl get secret $certs_secret -o jsonpath="{.data.$key}" | base64 -d)
 
-                # Create a private key for the certificate
+                # Create a the certificate
                 echo "$value" > "$public_path/$cert"
-
-                #Copy certs to web distrubution
-                print_info "Publishing $cert to web server"
-                cp -f "$public_path/$cert" "$web_path/"
             fi
         done
 
@@ -730,9 +727,9 @@ init_container() {
         if [ ! -s "$public_path/$openssl_certBaseFileName.crt" ]; then
             fatal_error "Failed to succesfully generate a self signed root certificate"
         else
-            #copy the certificate into the shared web folder so it can be served up by the web server
-            print_info "Publishing CA Certificate"
-            cp -f "$public_path/$openssl_certBaseFileName.crt" "$web_path/"
+            #Start the Certificate Chain as this is the root CA
+            print_info "Creating CA Bundle"
+            openssl x509 -in "$public_path/$openssl_certBaseFileName.crt" -inform PEM -outform PEM -out "$public_path/ca-bundle.crt"
         fi
 
         display_header $COLOUR_INFO "Generating OCSP signing certificate for $openssl_name"
@@ -763,6 +760,10 @@ init_container() {
 
         #Save the certificates into Kubernetes
         save_certificates $private_path $public_path $certs_secret
+
+        #copy the ca-bundle into the shared web folder with the name of if this CA so it can be served up by the web server
+        print_info "Publishing CA Certificate"
+        cp -f "$public_path/ca-bundle.crt" "$web_path/$openssl_certBaseFileName.crt"
     fi
 
     #finally allow cleanup to run if its enabled
