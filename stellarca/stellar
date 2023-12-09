@@ -468,14 +468,14 @@ start_ocsp_responder(){
         -rsigner $public_path/$openssl_certBaseFileName-ocsp.crt \
         -rkey $private_path/$openssl_certBaseFileName-ocsp.key \
         -passin file:$ocsp_password_file \
-        -CA $public_path/$openssl_certBaseFileName.crt"
+        -CA $public_path/ca-bundle.crt"
     else
         exec openssl ocsp -index $db_path/index \
         -port 9801 \
         -rsigner $public_path/$openssl_certBaseFileName-ocsp.crt \
         -rkey $private_path/$openssl_certBaseFileName-ocsp.key \
         -passin file:$ocsp_password_file \
-        -CA $public_path/$openssl_certBaseFileName.crt
+        -CA $public_path/ca-bundle.crt
     fi
 }
 
@@ -523,8 +523,7 @@ config_subordinate(){
     sign_csr "$csr_path/$subordinate_basename.csr" \
         "/tmp/certs/$subordinate_basename.crt" \
         "sub_ca_ext" \
-        $openssl_lifeTimeDays \
-        true
+        $openssl_lifeTimeDays
 
     #Add to the CA Bundle to build the chain
     print_info "Creating CA Bundle"
@@ -541,8 +540,7 @@ config_subordinate(){
     sign_csr "$csr_path/$subordinate_basename-ocsp.csr"\
         "/tmp/certs/$subordinate_basename-ocsp.crt" \
         "ocsp_ext" \
-        $openssl_defaultDays \
-        true
+        $openssl_defaultDays
 
     display_header $COLOUR_INFO "Generating CRL signing certificate for $subordinate_name"
 
@@ -554,8 +552,7 @@ config_subordinate(){
     sign_csr "$csr_path/$subordinate_basename-crl.csr"\
         "/tmp/certs/$subordinate_basename-crl.crt" \
         "crl_ext" \
-        $openssl_defaultDays \
-        true
+        $openssl_defaultDays
 
     #Save the certificates into Kubernetes
     save_certificates /tmp/private /tmp/certs "$subordinate_basename-certs"
@@ -742,8 +739,7 @@ init_container() {
         sign_csr "$csr_path/$openssl_certBaseFileName-ocsp.csr"\
             "$public_path/$openssl_certBaseFileName-ocsp.crt" \
             "ocsp_ext" \
-            $openssl_defaultDays \
-            true
+            $openssl_defaultDays
 
         display_header $COLOUR_INFO "Generating CRL signing certificate for $openssl_name"
 
@@ -755,8 +751,7 @@ init_container() {
         sign_csr "$csr_path/$openssl_certBaseFileName-crl.csr"\
             "$public_path/$openssl_certBaseFileName-crl.crt" \
             "crl_ext" \
-            $openssl_defaultDays \
-            true
+            $openssl_defaultDays
 
         #Save the certificates into Kubernetes
         save_certificates $private_path $public_path $certs_secret
