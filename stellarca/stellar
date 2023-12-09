@@ -12,6 +12,7 @@ display_help() {
     echo -e "  gencrl             Generate a new CRL file"
     echo -e "  ocsp               Starts the openssl ocsp responder"
     echo -e "  subordinate        Creates a new Subordinate CA certifcate, and associated CRL and OCSP signing certificates"
+    echo -e "  signcsr            Sign a Certificate Signing Request that is supplied as a string value"
 
     echo -e "\e[34m\nGlobal Options:\e[0m"
     echo -e "  --help    | -h     To get detailed help on commands use $0 COMMAND --help"
@@ -57,6 +58,25 @@ display_subordinate_help(){
     exit 0
 }
 
+display_signcsr_help(){
+    echo -e "\n\e[34mUsage:\e[0m stellar signcsr [OPTIONS]\n"
+    echo -e "Sign the supplied CSR and print the generated certificate to stdout"
+
+    echo -e "\e[34mOptions:\e[0m"
+    echo -e "  --csr      | -c     (Required) The csr as a string"
+    echo -e "  --lifetime | -l     The requested lifetime of the certificate to be issued. Must be an integer repesenting the number of days"
+    echo -e "  --extension| -e     The openssl extension to use, valid options are;"
+    echo -e "                        - server"
+    echo -e "                        - client (Default)"
+    echo -e "                        - codesign"
+    echo -e "                        - email"
+
+    echo -e "\e[34mExamples:\e[0m"
+    echo -e "** To sign a csr for a server that is currently stored in a file name request.csr with a lifetime of 365 days"
+    echo -e "    stellar signcsr --csr=\"\$(cat request.csr)\" --extension=server --lifetime=365"
+
+    exit 0
+}
 
 display_header(){
     echo -e "\n\e[$1m----------------------------------------------------------------------------\e[0m"
@@ -275,6 +295,105 @@ parse_subordinate_params(){
 }
 
 ####################################################################
+## Parse and validate the parameters of the sign csr command
+####################################################################
+parse_signcsr_params(){
+    # Parse command-line options
+
+    while getopts ":c:e:l:-:hv" opt; do
+        case $opt in
+            c)
+                signcsr_string="$OPTARG"
+                ;;
+            e)
+                signcsr_ext="$OPTARG"
+                ;;
+            l)
+                signcsr_lifetime="$OPTARG"
+                ;;
+            v)
+                VERBOSE=true
+                ;;
+            h)
+                display_signcsr_help
+                ;;
+            -)
+                case "${OPTARG}" in
+                    csr=*)
+                        signcsr_string="${OPTARG#*=}"
+                    ;;
+                    extension=*)
+                        signcsr_ext="${OPTARG#*=}"
+                    ;;
+                    lifetime=*)
+                        signcsr_lifetime="${OPTARG#*=}"
+                    ;;
+                    verbose|v)
+                        VERBOSE=true
+                    ;;
+                    help|h)
+                        display_signcsr_help
+                    ;;
+                    *)
+                        echo "Unknown signcsr option: --$OPTARG" >&2
+                        display_signcsr_help
+                    ;;
+                esac
+                ;;
+            :)
+                echo "Option -$OPTARG requires an argument." >&2
+                display_signcsr_help
+                ;;
+            ?)
+                echo "Unknown signcsr option: $OPTARG"
+                display_signcsr_help
+                ;;
+        esac
+    done
+
+    #Check that csr has been supplied
+    if [ -z "$signcsr_string" ]; then
+        echo -e "\n\e[31m --csr is a required parameters.\e[0m"
+        display_signcsr_help
+    fi
+
+    #If signcsr_ext was not supplied default it to client
+    if [ -z "$signcsr_ext" ]; then
+        print_debug "Defaulting signcsr_ext to client"
+        signcsr_ext=client
+    fi
+
+    #confirm that extension is a valid value and convert it to required extension name used in openssl.conf
+    case "$signcsr_ext" in
+        server)
+            signcsr_ext="server_ext"
+            ;;
+        client)
+            signcsr_ext="client_ext"
+            ;;
+        codesign)
+            signcsr_ext="codesign_ext"
+            ;;
+        email)
+            signcsr_ext="email_ext"
+            ;;
+        *)
+            echo -e "\n\e[31mInvalid extension: $signcsr_ext"
+            display_signcsr_help
+            ;;
+    esac
+
+    #Check if lifetime is an integer
+    if [ -z "$signcsr_lifetime" ]; then
+        print_debug "lifetime was not supplied, defaulting to $openssl_defaultDays"
+        signcsr_lifetime=$openssl_defaultDays
+    elif [ "$signcsr_lifetime" -ne "$signcsr_lifetime" ] 2>/dev/null; then
+        echo -e "\n\e[31mlifetime must be an integer: $signcsr_lifetime"
+        display_signcsr_help
+    fi
+}
+
+####################################################################
 ## Set the common variables that most functions use
 ####################################################################
 set_variables(){
@@ -426,19 +545,24 @@ generate_csr(){
 }
 
 ####################################################################
-## Sign CSR using provided parameters
+## Internal function to Sign a CSR using openssl and the provided parameters
 ## $1 - CSR file
-## $2 - Public Certificate file
-## $3 - Openssl Extension
-## $4 - Certificate Lifetime
+## $2 - Openssl Extension
+## $3 - Certificate Lifetime
+## $4 - Output file (Optional)
 ####################################################################
-sign_csr(){
-    openssl ca -config $conf_file -in $1 -out $2 \
-        -extensions $3 -passin file:$ca_password_file -days $4 -notext -batch
+openssl_sign_csr(){
+    if [ -n "$4" ] ; then
+        openssl ca -config $conf_file -in $1 -out $4 \
+            -extensions $2 -passin file:$ca_password_file -days $3 -notext -batch
 
-    #check that the self signed certificate was created and exists.
-    if [ ! -s "$2" ]; then
-        fatal_error "Failed to sign the certificate"
+        #check that the self signed certificate was created and exists.
+        if [ ! -s "$4" ]; then
+            fatal_error "Failed to sign the certificate"
+        fi
+    else
+        openssl ca -config $conf_file -in $1 \
+            -extensions $2 -passin file:$ca_password_file -days $3 -notext -batch
     fi
 }
 
@@ -520,10 +644,10 @@ config_subordinate(){
         "$csr_path/$subordinate_basename.csr" \
         "$sub_password_file"
 
-    sign_csr "$csr_path/$subordinate_basename.csr" \
-        "/tmp/certs/$subordinate_basename.crt" \
+    openssl_sign_csr "$csr_path/$subordinate_basename.csr" \
         "sub_ca_ext" \
-        $openssl_lifeTimeDays
+        $openssl_lifeTimeDays \
+        "/tmp/certs/$subordinate_basename.crt"
 
     #Add to the CA Bundle to build the chain
     print_info "Creating CA Bundle"
@@ -537,10 +661,10 @@ config_subordinate(){
         "$csr_path/$subordinate_basename-ocsp.csr" \
         "$sub_ocsp_password_file"
         
-    sign_csr "$csr_path/$subordinate_basename-ocsp.csr"\
-        "/tmp/certs/$subordinate_basename-ocsp.crt" \
+    openssl_sign_csr "$csr_path/$subordinate_basename-ocsp.csr"\
         "ocsp_ext" \
-        $openssl_defaultDays
+        $openssl_defaultDays \
+        "/tmp/certs/$subordinate_basename-ocsp.crt"
 
     display_header $COLOUR_INFO "Generating CRL signing certificate for $subordinate_name"
 
@@ -549,10 +673,10 @@ config_subordinate(){
         "$csr_path/$subordinate_basename-crl.csr" \
         "$sub_crl_password_file"
         
-    sign_csr "$csr_path/$subordinate_basename-crl.csr"\
-        "/tmp/certs/$subordinate_basename-crl.crt" \
+    openssl_sign_csr "$csr_path/$subordinate_basename-crl.csr"\
         "crl_ext" \
-        $openssl_defaultDays
+        $openssl_defaultDays \
+        "/tmp/certs/$subordinate_basename-crl.crt"
 
     #Save the certificates into Kubernetes
     save_certificates /tmp/private /tmp/certs "$subordinate_basename-certs"
@@ -565,6 +689,39 @@ config_subordinate(){
     rm -rf /tmp/passwords
     rm -rf /tmp/private
 
+}
+
+####################################################################
+## Sign a CSR supplied via the commandline
+####################################################################
+signcsr() {
+    display_header $COLOUR_INFO "Signing Certificate Signing Request"
+
+    print_debug "Saving CSR string to temp file $(pwd)/tmp/request.csr"
+    echo -e "" > "$(pwd)/tmp/request.csr"
+    echo "$signcsr_string" >> "$(pwd)/tmp/request.csr"
+    echo -e "" >> "$(pwd)/tmp/request.csr"
+
+    openssl ca -config $conf_file -in "$(pwd)/tmp/request.csr" \
+        -out "$(pwd)/tmp/request.crt" \
+        -extensions $signcsr_ext \
+        -passin file:$ca_password_file \
+        -days $signcsr_lifetime \
+
+    #Extract the serial number of the signed cert
+    serial=$(openssl x509 -in "$(pwd)/tmp/request.crt" -noout -serial | cut -d'=' -f2)
+    print_debug "Certificate Serial=$serial"
+
+    print_debug "Saving a copy of csr to $csr_path/$serial.csr"
+    mv "$(pwd)/tmp/request.csr" "$csr_path/$serial.csr"
+
+    display_header $COLOUR_INFO "Signed Certificate Bundle"
+    echo ""
+
+    openssl x509 -in "$(pwd)/tmp/request.crt" -out "$(pwd)/tmp/request.crt" -notext
+    #combine Cert and ca-bundle
+    cat "$(pwd)/tmp/request.crt" $public_path/ca-bundle.crt
+    rm "$(pwd)/tmp/request.crt"
 }
 
 ####################################################################
@@ -736,10 +893,10 @@ init_container() {
             "$csr_path/$openssl_certBaseFileName-ocsp.csr" \
             $ocsp_password_file
            
-        sign_csr "$csr_path/$openssl_certBaseFileName-ocsp.csr"\
-            "$public_path/$openssl_certBaseFileName-ocsp.crt" \
+        openssl_sign_csr "$csr_path/$openssl_certBaseFileName-ocsp.csr"\
             "ocsp_ext" \
-            $openssl_defaultDays
+            $openssl_defaultDays \
+            "$public_path/$openssl_certBaseFileName-ocsp.crt"
 
         display_header $COLOUR_INFO "Generating CRL signing certificate for $openssl_name"
 
@@ -748,10 +905,10 @@ init_container() {
             "$csr_path/$openssl_certBaseFileName-crl.csr" \
             $crl_password_file
            
-        sign_csr "$csr_path/$openssl_certBaseFileName-crl.csr"\
-            "$public_path/$openssl_certBaseFileName-crl.crt" \
+        openssl_sign_csr "$csr_path/$openssl_certBaseFileName-crl.csr"\
             "crl_ext" \
-            $openssl_defaultDays
+            $openssl_defaultDays \
+            "$public_path/$openssl_certBaseFileName-crl.crt"
 
         #Save the certificates into Kubernetes
         save_certificates $private_path $public_path $certs_secret
@@ -792,6 +949,9 @@ case "$1" in
     subordinate)
         COMMAND="subordinate"
         ;;
+    signcsr)
+        COMMAND="signcsr"
+        ;;
     *)
         echo "Unknown command: $1"
         echo "Did you forget to include the command that stellar should run?"
@@ -814,6 +974,9 @@ elif [ "$COMMAND" = 'ocsp' ]; then
 elif [ "$COMMAND" = 'subordinate' ]; then
     parse_subordinate_params "$@"
     config_subordinate
+elif [ "$COMMAND" = 'signcsr' ]; then
+    parse_signcsr_params "$@"
+    signcsr
 else
     #no command was passed in
     display_help
