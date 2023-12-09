@@ -3,4 +3,4 @@
 /stellarca/tmp/*
 /stellarca/stellar-schema.json
 /stellarca/stellar-config.yaml
-Makefile
+/stellarca/Makefile
